@@ -1,0 +1,109 @@
+---
+title: "TMSstroke_RC"
+output: html_document
+date: "2023-08-04"
+---
+
+## Load the required libraries
+```{r}
+library(readr)
+library(dplyr, warn=FALSE)
+library(tidyr)
+library(ggplot2) 
+library(cowplot) 
+library(RColorBrewer) 
+library(rmcorr)
+library(ggrepel)
+library(minpack.lm)
+```
+
+```{r}
+# Get a list of the files to read
+files <- list.files("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/processed_data/old/rc/average/unaffected_hemi", 
+                    pattern = "\\.csv", full.names = TRUE)
+
+# Read files and add an id
+dfRC_all <- read_csv(files, id = "file") |>
+  # Clean file name
+  mutate(file = gsub("\\-mepRC-UH-avg.csv", "", basename(file))) |>
+  # separate into subject and treatment columns
+  separate(file, into = c("subID", "treatment"), sep = "_") |> 
+  # Select and rename
+  select(subID, treatment, pMSO, mepAMP = "MEP AMP (mV)") |> 
+  pivot_wider(names_from = treatment, values_from = mepAMP, names_prefix = "mepAMP_")
+dfRC_all
+
+# Pivot df into long format
+dfRC_long <- dfRC_all %>%
+  pivot_longer(contains('mep'), names_sep = '_', 
+               names_to = c('.value', 'prepost')) %>%
+  mutate(subID = factor(subID), prepost = factor(prepost, c('pre', 'post')))
+dfRC_long
+
+# Filter out problematic rows (any missing values)
+dfRC_long_filt <- dfRC_long[complete.cases(dfRC_long[, c("mepAMP")]), ]
+
+# Function to fit the model for pre- data
+fit_individual_model <- function(data) {
+  pre_data <- subset(data, prepost == "pre")
+  
+  z <- nls(mepAMP ~ b1*(1 + tanh(a1*(pMSO - a0))), 
+           data = pre_data,
+           start = list(b1 = 0.5, a1 = 0.5, a0 = 5),
+           upper = list(b1 = max(pre_data$mepAMP)/2, 
+                        a1 = 1, 
+                        a0 = max(pre_data$pMSO)),
+           control = nls.control(maxiter = 100),  # Increase maxiter if needed
+           trace = TRUE,
+           algorithm = "port")
+  return(summary(z))
+}
+
+# Fit the model to a single participant
+specific_subID_results <- dfRC_long_filt %>%
+  filter(subID == 18989) %>%
+  do(fit_individual_model(.))
+
+# Fit the model for each participant
+individual_results <- dfRC_long %>%
+  group_by(subID) %>%
+  do(fit_individual_model(.))
+
+# Display the results for each participant
+print(individual_results)
+```
+
+# Malcolm's example code using a single participant
+
+```{r}
+pMSO <- c(1:9)
+PRE89 <- c(0.048225803,0.105472227,0.204351647,0.28299246,0.326427531,0.608006921,0.540236238,0.903566428,1.04172458)
+POST89 <- c(0.542674787,1.531356937,1.541189821,4.696559101,4.594390705,6.151579738,4.166369752,5.898124955,12.63777354)
+
+z1 <- nls(PRE89 ~ b1*(1+tanh(a1*(pMSO - a0))), 
+          start = list(b1 = 0.5, a1 = 0.5, a0 = 5),
+          upper = list(b1 = max(POST89)/2, a1 = 1, a0 = max(pMSO)),
+          trace = TRUE,
+          algorithm = "port")
+summary(z1)
+
+plot(pMSO, PRE89, 
+     ylim=c(0,16),
+     xlim=c(0,32), 
+     ylab="Amplitude for #89")
+lines(c(1:32), 0.96*(1+tanh(0.20*(c(1:32)-8.6))))
+
+pMSO <- c(5:13)
+
+#nls.control(maxiter = 50, tol = 10)
+z2 <- nls(POST89 ~ b1*(1+tanh(a1*(pMSO - a0))), 
+          start = list(b1=4, a1=0.16, a0=8),
+          upper = list(b1=max(POST89)/2,a1=1,a0=max(pMSO)),
+          trace = TRUE,
+          algorithm = "port")
+summary(z2)
+
+points(pMSO,POST89,pch=3)
+lines(c(1:32), 6.32*(1+tanh(0.22*(c(1:32)-10.7))))
+
+```

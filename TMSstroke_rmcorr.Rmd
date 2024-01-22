@@ -1,0 +1,199 @@
+---
+title: "TMSstroke_SICI-ARAT"
+output: html_document
+date: "2023-04-28"
+---
+
+## Load the required libraries
+```{r}
+library(readr)
+library(rmcorr) 
+library(ggplot2) 
+library(cowplot) 
+library(RColorBrewer) 
+library(rmcorr)
+library(dplyr)
+library(ggrepel)
+```
+
+# RMT & ARAT 
+
+## Load the data
+```{r}
+setwd("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/repositories")
+
+dataRMT.ARAT <- read_csv("data/TMSstroke_RMT-ARAT_rmcorr.csv") #read in the raw data files
+
+dataRMT.ARAT$sex <- factor(dataRMT.ARAT$sex,
+                          level=c(0,1),
+                          labels=c("male", "female")
+                     ) 
+
+head(dataRMT.ARAT, 9) #print the first 9 rows
+```
+
+## Get sample size
+```{r}
+nRMT <- length(unique(dataRMT.ARAT$subID))
+```
+
+## Calculate rmcorr using selected columns
+```{r}
+rmcRMT <- rmcorr(participant = subID,
+                 measure1 = ARAT,
+                 measure2 = unaffected_70,
+                 dataset = dataRMT.ARAT,
+                 CI.level = 0.95,
+                 CIs = "analytic",
+                 nreps = 100,
+                 bstrap.out = FALSE)
+rmcRMT
+```
+
+## And plot the data
+```{r}
+plotDataRMT <- dataRMT.ARAT
+plotDataRMT <- na.omit(select(plotDataRMT, all_of(c("subID", "ARAT", "unaffected_70", "timepoint")))) 
+p.RMT.ARAT <- ggplot(plotDataRMT, aes(x = ARAT, y = unaffected_70, label = timepoint, 
+                                   group = factor(subID), color = factor(subID))) +
+  geom_text_repel(size = 5, direction = "both", hjust = "left") +
+  geom_point(aes(colour = factor(subID))) +
+  geom_line(aes(y = rmcRMT$model$fitted.values), linetype = 1, alpha = 0.6) +
+  geom_line(linetype = 3, alpha = 0.3) +
+#  ggtitle("Main Plot Title") +
+  ylab("Unaffected hemisphere RMT") +
+  xlab("ARAT score") +
+  theme_cowplot() +
+  scale_shape_identity() +
+  theme(legend.position = "none",
+             plot.title = element_text(size = 20, hjust = 0.5),
+             axis.title = element_text(size = 15),
+             axis.text = element_text(size = 15),
+             axis.text.x = element_text(angle = 0, hjust = 0, vjust = 0)) +
+  scale_colour_manual(values = colorRampPalette(brewer.pal(12, "Paired"))(nRMT))
+p.RMT.ARAT
+
+ggsave("p_RMTARAT.tiff", 
+       plot = p.RMT.ARAT,
+       width = 10,
+       height = 7
+)
+```
+
+# SICI Amplitude & ARAT 
+
+## Load the data
+```{r}
+setwd("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/repositories")
+
+dataSICIamp.ARAT <- read_csv("data/SICI_amplitude_rmcorr.csv") #read in the raw data files
+
+head(dataSICIamp.ARAT, 9) #print the first 9 rows
+```
+
+## Get sample size
+```{r}
+nSICIamp <- length(unique(dataSICIamp.ARAT$subID))
+```
+
+## Calculate rmcorr using selected columns
+```{r}
+rmcSICIamp <- rmcorr(participant = subID,
+                 measure1 = ARAT,
+                 measure2 = unaffected,
+                 dataset = dataSICIamp.ARAT,
+                 CI.level = 0.95,
+                 CIs = "analytic",
+                 nreps = 100,
+                 bstrap.out = FALSE)
+rmcSICIamp
+```
+
+## And plot the data
+```{r}
+plotDataSICIamp <- dataSICIamp.ARAT
+plotDataSICIamp <- na.omit(select(plotDataSICIamp, all_of(c("subID", "ARAT", "unaffected", "timepoint")))) 
+p.SICIamp.ARAT <- ggplot(plotDataSICIamp, aes(x = ARAT, y = unaffected, label = timepoint, 
+                                   group = factor(subID), color = factor(subID))) +
+  geom_text_repel(size = 3, direction = "both", hjust = "left") +
+  geom_point(aes(colour = factor(subID))) +
+  geom_line(aes(y = rmcSICIamp$model$fitted.values), linetype = 1, alpha = 0.6) +
+  geom_line(linetype = 3, alpha = 0.3) +
+#  ggtitle("Main Plot Title") +
+  ylab("Unaffected hemisphere SICI Amplitude") +
+  xlab("ARAT score") +
+  theme_cowplot() +
+  scale_shape_identity() +
+  theme(legend.position = "none",
+             plot.title = element_text(size = 20, hjust = 0.5),
+             axis.title = element_text(size = 15),
+             axis.text = element_text(size = 15),
+             axis.text.x = element_text(angle = 0, hjust = 0, vjust = 0)) +
+  scale_colour_manual(values = colorRampPalette(brewer.pal(12, "Paired"))(nSICIamp))
+p.SICIamp.ARAT
+
+ggsave("p_SICIampARAT.tiff", 
+       plot = p.SICIamp.ARAT,
+       width = 7,
+       height = 7
+)
+```
+
+# SICI Latency & ARAT 
+
+## Load the data
+```{r}
+setwd("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/repositories")
+
+dataSICIlat.ARAT <- read_csv("data/SICI_latency_rmcorr.csv") #read in the raw data files
+
+head(dataSICIlat.ARAT, 9) #print the first 9 rows
+```
+
+## Get sample size
+```{r}
+nSICIlat <- length(unique(dataSICIlat.ARAT$subID))
+```
+
+## Calculate rmcorr using selected columns
+```{r}
+rmcSICIlat <- rmcorr(participant = subID,
+                 measure1 = ARAT,
+                 measure2 = unaffected,
+                 dataset = dataSICIlat.ARAT,
+                 CI.level = 0.95,
+                 CIs = "analytic",
+                 nreps = 100,
+                 bstrap.out = FALSE)
+rmcSICIlat
+```
+
+## And plot the data
+```{r}
+plotDataSICIlat <- dataSICIlat.ARAT
+plotDataSICIlat <- na.omit(select(plotDataSICIlat, all_of(c("subID", "ARAT", "unaffected", "timepoint")))) 
+p.SICIlat.ARAT <- ggplot(plotDataSICIlat, aes(x = ARAT, y = unaffected, label = timepoint, 
+                                   group = factor(subID), color = factor(subID))) +
+  geom_text_repel(size = 3, direction = "both", hjust = "left") +
+  geom_point(aes(colour = factor(subID))) +
+  geom_line(aes(y = rmcSICIlat$model$fitted.values), linetype = 1, alpha = 0.6) +
+  geom_line(linetype = 3, alpha = 0.3) +
+#  ggtitle("Main Plot Title") +
+  ylab("Unaffected hemisphere SICI Latency") +
+  xlab("ARAT score") +
+  theme_cowplot() +
+  scale_shape_identity() +
+  theme(legend.position = "none",
+             plot.title = element_text(size = 20, hjust = 0.5),
+             axis.title = element_text(size = 15),
+             axis.text = element_text(size = 15),
+             axis.text.x = element_text(angle = 0, hjust = 0, vjust = 0)) +
+  scale_colour_manual(values = colorRampPalette(brewer.pal(12, "Paired"))(nSICIlat))
+p.SICIlat.ARAT
+
+ggsave("p_SICIlatARAT.tiff", 
+       plot = p.SICIlat.ARAT,
+       width = 7,
+       height = 7
+)
+```

@@ -1,0 +1,215 @@
+---
+title: "TMSstroke_RMT"
+author: "Alica Rogojin"
+output: html_TMS-stroke_RMT
+date: "2023-02-14"
+---
+
+## Load required R packages 
+```{r setup, include=FALSE}
+library(knitr)
+opts_chunk$set(echo = TRUE)
+
+library(readr)
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(dplyr)
+```
+
+## General
+Baycrest data:
+
+subID Affected Hemisphere
+18989	Left
+13108	Right
+19685	Left
+19672	Left
+19673	Right
+19674	Right
+19746	Right
+19684	Right
+19747	Right
+n = 9
+
+McMaster data:
+
+## Load data
+```{r}
+setwd("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/repositories")
+
+# Wide format
+dataRMT <- read_csv("data/TMSstroke_RMT.csv") #read in the raw data files
+
+dataRMT$sex <- factor(dataRMT$sex,
+                          level=c(0,1),
+                          labels=c("male", "female")
+                     ) 
+
+head(dataRMT, 9) #print the first 9 rows
+
+# Transform into long data: gather the before and after values in the same column
+dataRMT.affected70.long <- dataRMT %>%
+  gather(key = "affected70_time", value = "affected_RMT70", affected_70_pre, affected_70_post)
+dataRMT.affected70.long <- select(dataRMT.affected70.long, -5:-11)
+head(dataRMT.affected70.long, 10)
+
+dataRMT.unaffected70.long <- dataRMT %>%
+  gather(key = "unaffected70_time", value = "unaffected_RMT70", unaffected_70_pre, unaffected_70_post)
+dataRMT.unaffected70.long <- select(dataRMT.unaffected70.long, -5:-11)
+head(dataRMT.unaffected70.long, 10)
+
+dataRMT.affected50.long <- dataRMT %>%
+  gather(key = "affected50_time", value = "affected_RMT50", affected_50_pre, affected_50_post)
+dataRMT.affected50.long <- select(dataRMT.affected50.long, -5:-11)
+head(dataRMT.affected50.long, 10)
+
+dataRMT.unaffected50.long <- dataRMT %>%
+  gather(key = "unaffected50_time", value = "unaffected_RMT50", unaffected_50_pre, unaffected_50_post)
+dataRMT.unaffected50.long <- select(dataRMT.unaffected50.long, -5:-11)
+head(dataRMT.unaffected50.long, 10)
+```
+
+## Summary statistics and pre-test checks
+```{r}
+dataRMT.affected70.long %>%
+  group_by(affected70_time) %>%
+  get_summary_stats(affected_RMT70, type = "mean_sd")
+
+dataRMT.unaffected70.long %>%
+  group_by(unaffected70_time) %>%
+  get_summary_stats(unaffected_RMT70, type = "mean_sd")
+
+dataRMT.affected50.long %>%
+  group_by(affected50_time) %>%
+  get_summary_stats(affected_RMT50, type = "mean_sd")
+
+dataRMT.unaffected50.long %>%
+  group_by(unaffected50_time) %>%
+  get_summary_stats(unaffected_RMT50, type = "mean_sd")
+
+# Test for normality, if p > 0.05 can assume normality
+shapiro.test(dataRMT$affected_70_pre) # => p = 0.253
+shapiro.test(dataRMT$affected_70_post) # => p = 0.9666
+shapiro.test(dataRMT$unaffected_70_pre) # => p = 0.3487
+shapiro.test(dataRMT$unaffected_70_post) # => p = 0.9576
+shapiro.test(dataRMT$affected_50_pre) # => p = 0.1287
+shapiro.test(dataRMT$affected_50_post) # => p = 0.821
+shapiro.test(dataRMT$unaffected_50_pre) # => p = 0.5966
+shapiro.test(dataRMT$unaffected_50_post) # => p = 0.05421
+```
+
+## Affected hemi with 70 mm coil - paired t-test
+```{r}
+res.affected70 <- t.test(affected_RMT70 ~ affected70_time, data = na.omit(dataRMT.affected70.long), paired = TRUE)
+res.affected70
+
+stat.affected70 <- na.omit(dataRMT.affected70.long)  %>% 
+  t_test(affected_RMT70 ~ affected70_time, paired = TRUE, detailed = TRUE) %>%
+  add_significance()
+stat.affected70
+
+dataRMT.affected70.long %>% cohens_d(affected_RMT70 ~ affected70_time, paired = TRUE)
+
+# Create a box plot
+bxp <- ggpaired(dataRMT.affected70.long, x = "affected70_time", y = "affected_RMT70", id = "subID",
+         order = c("affected_70_pre", "affected_70_post"),
+         ylab = "RMT", xlab = "Pre/Post Treatment")
+
+# Add p-value and significance levels
+stat.affected70 <- stat.affected70 %>% add_xy_position(x = "affected70_time")
+bxp + 
+  stat_pvalue_manual(stat.affected70, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.affected70, detailed= TRUE))
+
+```
+
+## Unaffected hemi with 70 mm coil - paired t-test
+```{r}
+res.unaffected70 <- t.test(unaffected_RMT70 ~ unaffected70_time, data = na.omit(dataRMT.unaffected70.long), paired = TRUE)
+res.unaffected70
+
+stat.unaffected70 <- na.omit(dataRMT.unaffected70.long)  %>% 
+  t_test(unaffected_RMT70 ~ unaffected70_time, paired = TRUE, detailed = TRUE) %>%
+  add_significance()
+stat.unaffected70
+
+dataRMT.unaffected70.long %>% cohens_d(unaffected_RMT70 ~ unaffected70_time, paired = TRUE)
+
+# Create a box plot
+bxp <- ggpaired(dataRMT.unaffected70.long, x = "unaffected70_time", y = "unaffected_RMT70", id = "subID",
+         order = c("unaffected_70_pre", "unaffected_70_post"),
+         ylab = "RMT", xlab = "Pre/Post Treatment")
+
+# Add p-value and significance levels
+stat.unaffected70 <- stat.unaffected70 %>% add_xy_position(x = "unaffected70_time")
+pRMT_unaffected <- bxp + 
+  stat_pvalue_manual(stat.unaffected70, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.unaffected70, detailed= TRUE))
+stat.unaffected70
+
+ggsave("p_RMT_unaffected.tiff", 
+       plot = pRMT_unaffected,
+       width = 8,
+       height = 7
+)
+```
+
+## Affected hemi with 50 mm coil - paired t-test
+```{r}
+res.affected50 <- t.test(affected_RMT50 ~ affected50_time, data = na.omit(dataRMT.affected50.long), paired = TRUE)
+res.affected50
+
+stat.affected50 <- na.omit(dataRMT.affected50.long)  %>% 
+  t_test(affected_RMT50 ~ affected50_time, paired = TRUE, detailed = TRUE) %>%
+  add_significance()
+stat.affected50
+
+dataRMT.affected50.long %>% cohens_d(affected_RMT50 ~ affected50_time, paired = TRUE)
+
+# Create a box plot
+bxp <- ggpaired(dataRMT.affected50.long, x = "affected50_time", y = "affected_RMT50", id = "subID",
+         order = c("affected_50_pre", "affected_50_post"),
+         ylab = "RMT", xlab = "Pre/Post Treatment")
+
+# Add p-value and significance levels
+stat.affected50 <- stat.affected50 %>% add_xy_position(x = "affected50_time")
+bxp + 
+  stat_pvalue_manual(stat.affected50, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.affected50, detailed= TRUE))
+
+```
+
+## Unaffected hemi with 50 mm coil - paired t-test
+```{r}
+res.unaffected50 <- t.test(unaffected_RMT50 ~ unaffected50_time, data = na.omit(dataRMT.unaffected50.long), paired = TRUE)
+res.unaffected50
+
+stat.unaffected50 <- na.omit(dataRMT.unaffected50.long)  %>% 
+  t_test(unaffected_RMT50 ~ unaffected50_time, paired = TRUE, detailed = TRUE) %>%
+  add_significance()
+stat.unaffected50
+
+dataRMT.unaffected50.long %>% cohens_d(unaffected_RMT50 ~ unaffected50_time, paired = TRUE)
+
+# Create a box plot
+bxp <- ggpaired(dataRMT.unaffected50.long, x = "unaffected50_time", y = "unaffected_RMT50", id = "subID",
+         order = c("unaffected_50_pre", "unaffected_50_post"),
+         ylab = "RMT", xlab = "Pre/Post Treatment")
+
+# Add p-value and significance levels
+stat.unaffected50 <- stat.unaffected50 %>% add_xy_position(x = "unaffected50_time")
+bxp + 
+  stat_pvalue_manual(stat.unaffected50, tip.length = 0) +
+  labs(subtitle = get_test_label(stat.unaffected50, detailed= TRUE))
+
+```
+
+## Adjust t-test p-values for multiple comparisons
+```{r}
+# If only using 70 mm coil results, only need to adjust the p-values for those two t-tests
+print(p.adjust(c(0.022, 0.2863), method = "holm")) # => 0.0324, 0.2863
+```
+
+
+
