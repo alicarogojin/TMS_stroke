@@ -1,6 +1,6 @@
 ---
 title: "TMSstroke_RC"
-
+author: "Alica Rogojin"
 output: html_document
 date: "2023-08-04"
 ---
