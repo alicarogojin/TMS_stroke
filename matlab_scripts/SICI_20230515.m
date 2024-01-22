@@ -2,6 +2,8 @@
 % Last Edit: Mar-16-2023
 clear 
 
+addpath('/rri_disks/artemis/meltzer_lab/jed/toolboxes/eeglab2020_0')
+
 %%%%%%%%%%%%%%%%%%%%%%%%% Output Parameters %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Output parameters (1=On, 0=off)
