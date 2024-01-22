@@ -1,5 +1,6 @@
 ---
 title: "TMSstroke_SICI"
+author: "Alica Rogojin"
 output: html_document
 date: "2023-04-11"
 ---
