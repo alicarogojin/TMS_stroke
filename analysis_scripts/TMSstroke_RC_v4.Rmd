@@ -1,5 +1,6 @@
 ---
 title: "TMSstroke_RC"
+author: "Alica Rogojin"
 output: html_document
 date: "2023-08-04"
 ---
@@ -19,7 +20,7 @@ library(minpack.lm)
 
 ```{r}
 # Get a list of the files to read
-files <- list.files("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/processed_data/old/rc/average/unaffected_hemi", 
+files <- list.files("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/processed_data/rc/average/unaffected_hemi", 
                     pattern = "\\.csv", full.names = TRUE)
 
 # Read files and add an id
