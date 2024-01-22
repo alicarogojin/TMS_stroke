@@ -1,6 +1,6 @@
 ---
 title: "TMSstroke_SICI-ARAT"
-
+author: "Alica Rogojin"
 output: html_document
 date: "2023-04-28"
 ---
