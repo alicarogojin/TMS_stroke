@@ -1,0 +1,83 @@
+---
+title: "TMSstroke_RC"
+output: html_document
+date: "2023-08-04"
+---
+
+## Load the required libraries
+```{r}
+library(readr)
+library(dplyr, warn=FALSE)
+library(tidyr)
+library(ggplot2) 
+library(cowplot) 
+library(RColorBrewer) 
+library(rmcorr)
+library(ggrepel)
+library(minpack.lm)
+```
+
+## Get sigmoid function parameters (max plateau, min plateau, S50, slope) for t-tests
+From (DOI: 10.1109/TNSRE.2019.2914475) and (DOI: 10.1007/s00221-004-2134-4), the recruitment curve model for parameter estimation
+that captures the parameters of most interest to scientists and clinicians, such as the recruitment curve midpoint, slope, and high
+saturation level (plateau). This is defined as:
+
+y = min + [(max - min)/(1 + exp((S50 - x)/slope))]
+
+y = mep amplitude
+x = pMSO (TMS stimulator output)
+min = minimum amplitude value (min plateau)
+max = maximum amplitude value (max plateau)
+slope = slope
+S50 = midpoint
+
+```{r}
+# Get a list of the files to read
+files <- list.files("/Users/connectome/Documents/Postdoc/Baycrest/TMS_stroke/processed_data/rc/average/unaffected_hemi", 
+                    pattern = "\\.csv", full.names = TRUE)
+
+# Read files and add an id
+dfRC_all <- read_csv(files, id = "file") |>
+  # Clean file name
+  mutate(file = gsub("\\-mepRC-UH-avg.csv", "", basename(file))) |>
+  # separate into subject and treatment columns
+  separate(file, into = c("subID", "treatment"), sep = "_") |> 
+  # Select and rename
+  select(subID, treatment, pMSO, mepAMP = "MEP AMP (mV)") |> 
+  pivot_wider(names_from = treatment, values_from = mepAMP, names_prefix = "mepAMP_")
+dfRC_all
+
+# pivot df into long format
+dfRC_long <- dfRC_all %>%
+  pivot_longer(contains('mep'), names_sep = '_', 
+               names_to = c('.value', 'prepost')) %>%
+  mutate(subID = factor(subID), prepost = factor(prepost, c('pre', 'post')))
+
+# plot pre vs post
+p <- ggplot(dfRC_long, aes(x = pMSO, y = mepAMP, colour = factor(subID))) +
+  geom_point() +
+  geom_smooth(method = nlsLM, se = FALSE, 
+              formula = y ~ plateau.min + ((plateau.max - plateau.min) / (1 + exp((S50 - x)/slope))),
+#              upper = c(plateau = 13, S50 = Inf, slope = Inf),
+              method.args = list(start = list(plateau.min = 0, plateau.max = 15, S50 = 65, slope = 8))
+             ) +
+  facet_grid(.~prepost)
+p
+
+# calculate model parameters (plateau max and min, S50, slope) for pre and post amplitude
+params <- dfRC_long %>%
+  group_by(subID, prepost) %>%
+  group_map(.f = ~ nlsLM(mepAMP ~ plateau.min + ((plateau.max - plateau.min) / (1 + exp((S50 - pMSO)/slope))), 
+                         data = .x, 
+                         start = list(plateau.min = 0, plateau.max = 15, S50 = 65, slope = 8) #,
+#                         upper = c(plateau.min = 0, plateau.max = 15, S50 = Inf, slope = Inf)
+                         ) %>%
+              coef() %>%
+              t() %>%
+              as.data.frame() %>%
+              mutate(pre_or_post = .y$prepost, .before = 1) %>%
+              mutate(subID = .y$subID, .before = 2)) %>%
+  bind_rows() %>%
+  arrange(pre_or_post, subID)
+params
+```
